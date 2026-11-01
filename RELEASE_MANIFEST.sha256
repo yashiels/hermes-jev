@@ -2,10 +2,10 @@
 # Fora: tests/ do judge, jev-skill-router, tools/, docs/ e calibração — fora do release auditado.
 e27145bea429ca06a97e2ad795540b81ab2dfa0ae311b1a25296f86125ac3056  SOURCE_PROVENANCE.md
 3347e4f49cef304101ae7e8ef0e598dcb58af61a62fec145e0d91a03116e914a  contracts/tool-gate-v1.json
-030191ae350b7398063a9f37d442657f79b86b5c7bc10e857d256339e4dd9375  plugins/jev-judge/__init__.py
-902343d0928c94ecb6f109310305d11d208cd719089cabc5942485732e7a0db6  plugins/jev-judge/gate.py
-4e8b3e0b2ec120d27377406a470a4bc263acc4a25d801b389ca8d8f7207e8b1e  plugins/jev-judge/jev.py
-4684ea026c1c8c120744e24728e347c112e875d9be442eac04630616fb6783d3  plugins/jev-judge/plugin.yaml
+2254ca41f1dfab669268e77c6ea5036681018ffcbac76aeba51a458d0fd0081a  plugins/jev-judge/__init__.py
+d7a4ce226da423eee44ef267757f7170cb5b723e13e0c5913a472a0a303a1ffa  plugins/jev-judge/gate.py
+212096376974a686f66580375c8a90c22dab8db55db09329c0cb98c2d8064055  plugins/jev-judge/jev.py
+4d9ac2878bf3d0d2b6a2629f536406ee2858c90e1647dfb85a2f5a77c791e1f9  plugins/jev-judge/plugin.yaml
 105274b578a9e20e8770f5f3410de1f06b1c272f60af421f66a83e30d7c84a74  plugins/jev-judge/schemas.py
 588a5f4a151727c55401fa936a8b4f79563e4f0bbad67ec9a9d5eb10f8982e31  plugins/jev-judge/tools.py
 4c302fb974f5380f65f1f6c71fd701ed4b082f72d3efe9533f1825286d8c7b6d  scripts/test_verify_release.py

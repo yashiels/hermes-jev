@@ -62,6 +62,22 @@ def register(ctx):
                 gate.log_decision(s["log_path"], verdict)
                 return None
             if s["mode"] == "enforce":
+                advisory = s["advisory_signals"]
+                disabled = s.get("advisory_disabled")
+                known_signals = set(gate.GATE_QUESTIONS) | set(gate.GATE_QUESTIONS_V2)
+                if not isinstance(advisory, list) or any(
+                    not isinstance(signal, str) or signal not in known_signals
+                    for signal in advisory
+                ):
+                    disabled = disabled or "invalid advisory_signals"
+                if disabled:
+                    verdict["advisory_disabled"] = disabled
+                elif "exfiltration" not in verdict["triggered"] and all(
+                    signal in advisory for signal in verdict["triggered"]
+                ):
+                    verdict["outcome"] = "flagged_advisory"
+                    gate.log_decision(s["log_path"], verdict)
+                    return None
                 verdict["outcome"] = "escalated"
                 gate.log_decision(s["log_path"], verdict)
                 return {

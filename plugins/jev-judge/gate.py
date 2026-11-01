@@ -27,7 +27,7 @@ _clients: dict[tuple, JevClient] = {}
 
 def settings_for(ctx) -> dict:
     """Plugin settings with defaults — shared by the gate hook and jev_ask."""
-    return {
+    settings = {
         "mode": ctx.get_config("mode", default="shadow"),
         "tools": ctx.get_config("tools", default=["terminal", "write_file", "patch"]),
         "timeout_s": ctx.get_config("timeout_s", default=3.0),
@@ -72,7 +72,21 @@ def settings_for(ctx) -> dict:
             "jev_base_url", default="https://ai-gateway.vercel.sh/v4/ai"
         ),
         "log_path": ctx.get_config("log_path", default=""),
+        "advisory_signals": ctx.get_config("advisory_signals", default=[]),
     }
+    absent = object()
+    joint = ctx.get_config("exfiltration_sends_threshold", default=absent)
+    if joint is not absent:
+        if (
+            isinstance(joint, (int, float))
+            and not isinstance(joint, bool)
+            and 0 <= joint <= 1
+            and math.isfinite(joint)
+        ):
+            settings["exfiltration_sends_threshold"] = joint
+        else:
+            settings["advisory_disabled"] = "invalid exfiltration_sends_threshold"
+    return settings
 
 
 def client_for(s: dict) -> JevClient:
@@ -228,7 +242,14 @@ def apply_policy(triggered: list, signals: dict, thresholds: dict) -> list:
     out = list(triggered)
     if (
         "reads_secrets" in out
-        and "sends_outbound" in out
+        and (
+            "sends_outbound" in out
+            or (
+                "exfiltration_sends_threshold" in thresholds
+                and signals["sends_outbound"]
+                >= thresholds["exfiltration_sends_threshold"]
+            )
+        )
         and "exfiltration" not in out
     ):
         out.append("exfiltration")
@@ -408,13 +429,18 @@ def judge_v2(
                 entry[key] = result[key]
         return entry
     thresholds = {**DEFAULTS_V2, **(thresholds or {})}
+    logged_thresholds = {k: thresholds[k] for k in DEFAULTS_V2}
+    if "exfiltration_sends_threshold" in thresholds:
+        logged_thresholds["exfiltration_sends_threshold"] = thresholds[
+            "exfiltration_sends_threshold"
+        ]
     return {
         "tool": tool_name,
         "gate_version": "v2",
         "signals": signals,
         "probabilities": dict(signals),  # alias: log parsers read this key
         "confidence": result.get("confidence", {}),
-        "thresholds": {k: thresholds[k] for k in DEFAULTS_V2},
+        "thresholds": logged_thresholds,
         "triggered": ladder_triggers(signals, thresholds),
         "ladder": list(LADDER_ORDER),
         "latency_ms": result.get("latency_ms"),

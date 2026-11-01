@@ -106,6 +106,23 @@ Needs `TYPESAFE_API_KEY` (direct), `AI_GATEWAY_API_KEY` (Vercel AI
 Gateway) and/or `OPENROUTER_API_KEY` (OpenRouter alpha Decisions API). No key
 at all: the plugin loads and stays silent (fail-open).
 
+## Advisory signals and joint exfiltration
+
+`advisory_signals` defaults to `[]`. In `enforce` mode, a call whose triggered
+signals are all listed proceeds with a `flagged_advisory` log entry. For example,
+`advisory_signals: [reads_secrets]` allows a secret read alone. Mixed triggers
+still prompt with every triggered signal; `exfiltration` always prompts, even
+if listed. Clear, shadow and fail-open outcomes stay unchanged.
+
+For v2, `exfiltration_sends_threshold: 0.6` also triggers `exfiltration` when
+`reads_secrets` triggers and `sends_outbound` is at least 0.6. The existing rule
+that both signals triggering implies exfiltration still applies. Omit this
+setting to retain the existing policy. It must be a finite number in [0, 1];
+booleans and strings are invalid. Valid values appear in logged thresholds.
+A malformed advisory list (anything other than a list of known signal names)
+or an invalid joint threshold disables advisory suppression and records an
+`advisory_disabled` reason on escalated calls. v1 thresholds remain unchanged.
+
 ## What leaves your machine
 
 Per gated call: one JSON payload with the tool name plus its arguments —
