@@ -36,6 +36,8 @@ PROTOCOL_VERSION = "0.0.1"
 SPEC_VERSION = "4"
 
 RATE_LIMIT_CODES = (429, 529)
+TRANSIENT_UPSTREAM_CODES = (502, 503, 504)
+TRANSIENT_RETRY_PAUSE_S = 0.5
 
 # Hard ceiling for one attempt: the loader fail-closes pre_tool_call past
 # hook_callback_timeout (default 30s), so an unbounded timeout_s would turn
@@ -346,10 +348,19 @@ class JevClient:
         with self._urlopen(req, timeout=self.timeout) as resp:
             return json.loads(resp.read())
 
+    def _send_once_more_on_transient(self, url: str, data: bytes, headers: dict):
+        try:
+            return self._send(url, data, headers)
+        except urllib.error.HTTPError as exc:
+            if exc.code not in TRANSIENT_UPSTREAM_CODES:
+                raise
+        self._sleep(TRANSIENT_RETRY_PAUSE_S)
+        return self._send(url, data, headers)
+
     def _post_json(self, url: str, data: bytes, headers: dict):
         """POST with a single rate-limit retry. Returns the body or None."""
         try:
-            body = self._send(url, data, headers)
+            body = self._send_once_more_on_transient(url, data, headers)
         except urllib.error.HTTPError as exc:
             if exc.code not in RATE_LIMIT_CODES:
                 logger.debug(

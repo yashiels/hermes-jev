@@ -936,6 +936,28 @@ def test_fail_reason_http_status():
     print("ok  http_500 e http_429 (sem retry): motivo http_<status>")
 
 
+def test_transient_502_retried_once():
+    client, script, _ = _enter(
+        _run_dual({"AI_GATEWAY_API_KEY": "g"}, _steps=[("http", 502), ("ok", _GW_BODY)])
+    )
+    try:
+        assert client.evaluate({"a": 1}, _Q18) is not None
+        assert client.last_fail_reason is None, client.last_fail_reason
+        assert len(script.calls) == 2, script.calls
+    finally:
+        _leave(client)
+    client, script, _ = _enter(
+        _run_dual({"AI_GATEWAY_API_KEY": "g"}, _steps=[("http", 503), ("http", 502)])
+    )
+    try:
+        assert client.evaluate({"a": 1}, _Q18) is None
+        assert client.last_fail_reason == "http_502", client.last_fail_reason
+        assert len(script.calls) == 2, script.calls
+    finally:
+        _leave(client)
+    print("ok  502/503 transitorio: um retry, depois fail-open")
+
+
 def test_fail_reason_parse():
     client, script, _ = _enter(
         _run_dual({"AI_GATEWAY_API_KEY": "g"}, _steps=[("raw", "<html>nao e json")])
@@ -1262,6 +1284,7 @@ if __name__ == "__main__":
         test_fail_reason_timeout,
         test_fail_reason_transport,
         test_fail_reason_http_status,
+        test_transient_502_retried_once,
         test_fail_reason_parse,
         test_fail_reason_breaker,
         test_fail_reason_cleared_on_success,
