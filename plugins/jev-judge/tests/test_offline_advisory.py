@@ -53,7 +53,7 @@ class Client:
         return {"answers": answers, "confidence": {}, "latency_ms": 123, "cost": "0.01"}
 
 
-def run_case(signals, outcome, triggered, config=None, failure=None):
+def run_case(signals, outcome, triggered, config=None, failure=None, unavailable_reason=None):
     with tempfile.TemporaryDirectory() as directory:
         log = Path(directory) / "decisions.jsonl"
         ctx = Context({"gate_version": "v2", "mode": "enforce", **(config or {}), "log_path": str(log)})
@@ -76,6 +76,11 @@ def run_case(signals, outcome, triggered, config=None, failure=None):
             "action": "approve",
             "message": f"Jev flagged this terminal call ({', '.join(triggered)}); confirm before it runs.",
         }
+        if unavailable_reason:
+            expected = {
+                "action": "approve",
+                "message": f"Jev could not judge this terminal call ({unavailable_reason}); confirm before it runs.",
+            }
         assert result == expected, (result, expected)
         assert client.calls == 1
         return entry
@@ -165,9 +170,25 @@ def test_other_outcomes_unchanged():
             assert "advisory_disabled" not in entry, entry
 
 
+def test_on_unavailable_approve():
+    approve = {"on_unavailable": "approve"}
+    for mode in ("enforce", "shadow"):
+        config = {**approve, "mode": mode}
+        run_case({}, "fail_open", None, config, "transport", "transport")
+        run_case({}, "fail_open", None, config, "missing", "answer_missing")
+        run_case({}, "error", None, config, "error", "gate error")
+        run_case({}, "clear", [], config)
+    run_case({}, "fail_open", None, {"on_unavailable": "allow"}, "transport")
+    ctx = Context({**approve, "tools": ["write_file"]})
+    plugin.register(ctx)
+    with patch.object(gate, "client_for", return_value=Client({}, "transport")):
+        assert ctx.hooks["pre_tool_call"](tool_name="terminal", args={}, task_id="t") is None
+
+
 if __name__ == "__main__":
     for test in (test_legacy_outcomes, test_boundaries_and_mixed_signals,
-                 test_invalid_settings, test_other_outcomes_unchanged):
+                 test_invalid_settings, test_other_outcomes_unchanged,
+                 test_on_unavailable_approve):
         test()
         print(f"ok  {test.__name__}")
     print("all advisory hook tests passed")
