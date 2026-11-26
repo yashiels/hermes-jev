@@ -72,6 +72,7 @@ def settings_for(ctx) -> dict:
             "jev_base_url", default="https://ai-gateway.vercel.sh/v4/ai"
         ),
         "log_path": ctx.get_config("log_path", default=""),
+        "on_unavailable": ctx.get_config("on_unavailable", default="allow"),
         "advisory_signals": ctx.get_config("advisory_signals", default=[]),
     }
     absent = object()

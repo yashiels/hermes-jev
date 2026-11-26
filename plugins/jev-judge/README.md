@@ -101,6 +101,7 @@ retry can take up to ~2×`timeout_s` + `retry_max_wait_s` (~8s at defaults).
 | `self_advocating_threshold`            | `0.70`                                    | P(true) that triggers (v2 only)                                                                     |
 | `jev_model` / `jev_base_url`           | `typesafe-ai/jev` / AI Gateway           | Gateway endpoint overrides (prefixed: the loader rejects bare `model`/`base_url`, root is reserved) |
 | `log_path`                             | `<HERMES_HOME>/logs/jev-judge.log`       | JSONL decision log                                                                                  |
+| `on_unavailable`                       | `allow`                                  | `approve` escalates gated calls to the approval prompt when Jev fails open or the gate errors       |
 
 Needs `TYPESAFE_API_KEY` (direct), `AI_GATEWAY_API_KEY` (Vercel AI
 Gateway) and/or `OPENROUTER_API_KEY` (OpenRouter alpha Decisions API). No key

@@ -2,7 +2,8 @@
 
 pre_tool_call gate (shadow by default: judge + log, never interfere; enforce:
 escalate triggered calls to the human approval gate) and a `jev_ask` tool so
-the model can request typed judgments itself. Every path fails open.
+the model can request typed judgments itself. Every path fails open unless
+`on_unavailable: approve`, which escalates gated calls when Jev cannot judge.
 """
 
 from __future__ import annotations
@@ -29,11 +30,23 @@ def _tool_list(value) -> list:
     return [value]
 
 
+def _unavailable_escalation(settings, tool_name, reason):
+    if settings is None or settings.get("on_unavailable") != "approve":
+        return None
+    if tool_name not in _tool_list(settings.get("tools")):
+        return None
+    return {
+        "action": "approve",
+        "message": f"Jev could not judge this {tool_name} call ({reason}); confirm before it runs.",
+    }
+
+
 def register(ctx):
     """Wire the gate hook and the jev_ask tool."""
     tools.bind(ctx)  # the tool handler receives no ctx of its own
 
     def on_pre_tool_call(tool_name=None, args=None, task_id=None, **kwargs):
+        s = None
         try:
             s = gate.settings_for(ctx)
             if tool_name not in _tool_list(s["tools"]):
@@ -55,7 +68,7 @@ def register(ctx):
                 if (verdict or {}).get("signals") is not None:
                     entry["signals"] = verdict["signals"]
                 gate.log_decision(s["log_path"], entry)
-                return None
+                return _unavailable_escalation(s, tool_name, entry["reason"])
             verdict.update(source="gate", mode=s["mode"], task_id=task_id)
             if not verdict["triggered"]:
                 verdict["outcome"] = "clear"
@@ -104,7 +117,7 @@ def register(ctx):
                 )
             except Exception:
                 pass
-            return None
+            return _unavailable_escalation(s, tool_name, "gate error")
 
     ctx.register_hook("pre_tool_call", on_pre_tool_call)
     ctx.register_tool(
